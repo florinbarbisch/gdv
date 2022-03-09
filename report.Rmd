@@ -1,0 +1,306 @@
+---
+title: "Report"
+output: 
+  pdf_document:
+    toc: true
+    toc_depth: 2
+---
+
+# LO1: Visualization basics, chart types
+In diesem Kapitel setze ich mit den Grundlagen der Datenvisualisierungen auseinander. Dazu werde ich Visualisierungen erstellen und ein paar Grundsätze erläutern.
+Als Datensatz verwende ich die Wetterdaten von der Wetterstation Mythenquai der Seepolizei zürich aus der Wettermonitor-Challenge, welche ich letztes Jahr absolviert habe. Die Daten sind hier zu finden: [https://data.stadt-zuerich.ch/dataset/sid_wapo_wetterstationen] (https://data.stadt-zuerich.ch/dataset/sid_wapo_wetterstationen).
+
+Der Auftraggebber dieser Challenge war der Segelclub Zürich. Die Fragen sollten so sein, dass sie vom Auftraggeber hätten kommen können.
+
+```{r}
+library(tidyverse)
+library(lubridate)
+```
+
+
+```{r}
+mythenquai_2007_2021 <- read.csv("messwerte_mythenquai_2007-2021.csv")
+```
+
+
+```{r}
+mythenquai_2007_2021 %>% 
+  sample_n(10)
+```
+```{r}
+summary(mythenquai_2007_2021)
+```
+```{r}
+mythenquai_2007_2021 %>% 
+  ggplot(aes(x=wind_speed_avg_10min)) +
+  geom_histogram()
+```
+
+```{r}
+mythenquai_2007_2021 <- mythenquai_2007_2021 %>% 
+  mutate(timestamp_utc = as.POSIXct(timestamp_utc, format="%Y-%m-%dT%H:%M:%S", tz="UTC")) %>% 
+  select(-timestamp_cet)
+```
+
+
+
+```{r}
+mythenquai_2007_2021 %>% 
+  filter(is.na(water_temperature)) %>% 
+  summarise(min(timestamp_utc))
+
+```
+Seit Anfangs 2020 wird bei der Seepolizei gebaut, und deshalb sind folgende Messwerte nicht verfügbar:
+ - Wassertemperatur
+ - Strahlung
+ - Niederschlag
+ - Seespiegel
+
+Deshalb werde ich nicht immer mit dem ganzen Zeitraum arbeiten können.
+
+## Fragestellungen
+### Wieviel hat es jeden Monat geregnet?
+```{r}
+jan_2018 <- as.POSIXct("2018-01-01 00:00:00", tz="UTC")
+jan_2019 <- as.POSIXct("2019-01-01 00:00:00", tz="UTC")
+mythenquai_2007_2021 %>% 
+  select(timestamp_utc, precipitation) %>% 
+  filter(timestamp_utc >= jan_2018 & timestamp_utc < jan_2019) %>% 
+  group_by(month = lubridate::floor_date(timestamp_utc, "month")) %>%
+  summarise(total_precipitation = sum(precipitation)) %>% 
+  ggplot(aes(x=month, y=total_precipitation)) +
+    geom_bar(stat="identity") +
+    labs(x="Monat", y="Niederschlag [mm]", title="Niederschlag in Mythenquai pro Monat im Jahr 2018")
+```
+
+### Wie warm war es an Tag x?
+```{r}
+first_jan_2020 <- as.POSIXct("2018-01-01 00:00:00", tz="UTC")
+second_jan_2020 <- as.POSIXct("2018-01-02 00:00:00", tz="UTC")
+
+mythenquai_2007_2021 %>% 
+  select(timestamp_utc, air_temperature) %>% 
+  filter(timestamp_utc >= first_jan_2020 & timestamp_utc < second_jan_2020) %>% 
+  ggplot(aes(x=timestamp_utc, y=air_temperature)) +
+    geom_line() +
+    labs(x="Zeit", y="Lufttemperatur [°C]", title="Lufttemperatur in Mythenquai am erste Januar 2018")
+
+```
+
+### Wie ist die Verteilung des Niederschlags im Jahr 2018?
+```{r}
+jan_2018 <- as.POSIXct("2007-01-01 00:00:00", tz="UTC")
+jan_2019 <- as.POSIXct("2019-01-01 00:00:00", tz="UTC")
+mythenquai_2007_2021 %>% 
+  select(timestamp_utc, precipitation) %>% 
+  filter(timestamp_utc >= jan_2018 & timestamp_utc < jan_2019) %>% 
+  group_by(day = lubridate::floor_date(timestamp_utc, "day")) %>%
+  summarise(total_precipitation = sum(precipitation)) %>% 
+  filter(total_precipitation > 0) %>% 
+  ggplot(aes(x=total_precipitation)) +
+    geom_histogram() +
+    labs(x="Niederschlag an einem Tag", y="Anzahl Tage", title="Verteilung des totalen Niederschlags pro Tag in Mythenquai")
+```
+
+### Hat die Lufttemperatur und Wassertemperatur einen Zusammenhang?
+```{r}
+jan_2018 <- as.POSIXct("2018-01-01 00:00:00", tz="UTC")
+jan_2019 <- as.POSIXct("2019-01-01 00:00:00", tz="UTC")
+mythenquai_2007_2021 %>% 
+  select(timestamp_utc, air_temperature, water_temperature, water_level) %>% 
+  filter(timestamp_utc >= jan_2018 & timestamp_utc < jan_2019) %>% 
+  group_by(day = lubridate::floor_date(timestamp_utc, "day")) %>%
+  summarise(mean_air_temperature = mean(air_temperature), mean_water_temperature = mean(water_temperature)) %>% 
+  ggplot(aes(x=mean_air_temperature, y=mean_water_temperature)) +
+    geom_point() +
+    labs(x="Lufttemperatur in °C", y="Wassertemperatur in °C", title="Durchschnitts Wasser- vs Lufttemperatur pro Tag in 2018")
+```
+```{r}
+jan_2007 <- as.POSIXct("2007-01-01 00:00:00", tz="UTC")
+jan_2020 <- as.POSIXct("2020-01-01 00:00:00", tz="UTC")
+mythenquai_2007_2021 %>% 
+  select(timestamp_utc, air_temperature, water_temperature, water_level) %>% 
+  filter(timestamp_utc >= jan_2007 & timestamp_utc < jan_2020) %>% 
+  group_by(day = lubridate::floor_date(timestamp_utc, "day")) %>%
+  summarise(mean_air_temperature = mean(air_temperature), mean_water_temperature = mean(water_temperature)) %>% 
+  ggplot(aes(x=mean_air_temperature, y=mean_water_temperature)) +
+    geom_point() +
+    labs(x="Lufttemperatur in °C", y="Wassertemperatur in °C", title="Durchschnitts Wasser- vs Lufttemperatur pro Tag in 2007-2020")
+```
+
+```{r}
+jan_2018 <- as.POSIXct("2007-01-01 00:00:00", tz="UTC")
+jan_2019 <- as.POSIXct("2020-01-01 00:00:00", tz="UTC")
+mythenquai_2007_2021 %>% 
+  select(timestamp_utc, air_temperature, water_temperature, water_level) %>% 
+  filter(timestamp_utc >= jan_2018 & timestamp_utc < jan_2019) %>% 
+  group_by(day = lubridate::floor_date(timestamp_utc, "day")) %>%
+  summarise(mean_air_temperature = mean(air_temperature), mean_water_temperature = mean(water_temperature)) %>% 
+  ggplot(aes(x=mean_air_temperature, y=mean_water_temperature)) +
+    geom_bin2d() +
+    labs(x="Lufttemperatur in °C", y="Wassertemperatur in °C", title="Durchschnitts Wasser- vs Lufttemperatur pro Tag in 2007-2020")
+```
+
+```{r}
+jan_2018 <- as.POSIXct("2007-01-01 00:00:00", tz="UTC")
+jan_2019 <- as.POSIXct("2020-01-01 00:00:00", tz="UTC")
+mythenquai_2007_2021 %>% 
+  select(timestamp_utc, air_temperature, water_temperature, water_level) %>% 
+  filter(timestamp_utc >= jan_2018 & timestamp_utc < jan_2019) %>% 
+  group_by(day = lubridate::floor_date(timestamp_utc, "day")) %>%
+  summarise(mean_water_level = mean(water_level), mean_water_temperature = mean(water_temperature)) %>% 
+  ggplot(aes(x=mean_water_level, y=mean_water_temperature)) +
+    geom_bin2d()
+```
+
+### Von wo hat der Wind im letzten Jahr geweht?
+```{r}
+# From: https://stackoverflow.com/a/17266781
+# WindRose.R
+require(ggplot2)
+require(RColorBrewer)
+
+plot.windrose <- function(data,
+                      spd,
+                      dir,
+                      spdres = 2,
+                      dirres = 30,
+                      spdmin = 2,
+                      spdmax = 20,
+                      spdseq = NULL,
+                      palette = "YlGnBu",
+                      countmax = NA,
+                      debug = 0){
+
+
+# Look to see what data was passed in to the function
+  if (is.numeric(spd) & is.numeric(dir)){
+    # assume that we've been given vectors of the speed and direction vectors
+    data <- data.frame(spd = spd,
+                       dir = dir)
+    spd = "spd"
+    dir = "dir"
+  } else if (exists("data")){
+    # Assume that we've been given a data frame, and the name of the speed 
+    # and direction columns. This is the format we want for later use.    
+  }  
+
+  # Tidy up input data ----
+  n.in <- NROW(data)
+  dnu <- (is.na(data[[spd]]) | is.na(data[[dir]]))
+  data[[spd]][dnu] <- NA
+  data[[dir]][dnu] <- NA
+
+  # figure out the wind speed bins ----
+  if (missing(spdseq)){
+    spdseq <- seq(spdmin,spdmax,spdres)
+  } else {
+    if (debug >0){
+      cat("Using custom speed bins \n")
+    }
+  }
+  # get some information about the number of bins, etc.
+  n.spd.seq <- length(spdseq)
+  n.colors.in.range <- n.spd.seq - 1
+
+  # create the color map
+  spd.colors <- colorRampPalette(brewer.pal(min(max(3,
+                                                    n.colors.in.range),
+                                                min(9,
+                                                    n.colors.in.range)),                                               
+                                            palette))(n.colors.in.range)
+
+  if (max(data[[spd]],na.rm = TRUE) > spdmax){    
+    spd.breaks <- c(spdseq,
+                    max(data[[spd]],na.rm = TRUE))
+    spd.labels <- c(paste(c(spdseq[1:n.spd.seq-1]),
+                          '-',
+                          c(spdseq[2:n.spd.seq])),
+                    paste(spdmax,
+                          "-",
+                          max(data[[spd]],na.rm = TRUE)))
+    spd.colors <- c(spd.colors, "grey50")
+  } else{
+    spd.breaks <- spdseq
+    spd.labels <- paste(c(spdseq[1:n.spd.seq-1]),
+                        '-',
+                        c(spdseq[2:n.spd.seq]))    
+  }
+  data$spd.binned <- cut(x = data[[spd]],
+                         breaks = spd.breaks,
+                         labels = spd.labels,
+                         ordered_result = TRUE)
+  # clean up the data
+  data. <- na.omit(data)
+
+  # figure out the wind direction bins
+  dir.breaks <- c(-dirres/2,
+                  seq(dirres/2, 360-dirres/2, by = dirres),
+                  360+dirres/2)  
+  dir.labels <- c(paste(360-dirres/2,"-",dirres/2),
+                  paste(seq(dirres/2, 360-3*dirres/2, by = dirres),
+                        "-",
+                        seq(3*dirres/2, 360-dirres/2, by = dirres)),
+                  paste(360-dirres/2,"-",dirres/2))
+  # assign each wind direction to a bin
+  dir.binned <- cut(data[[dir]],
+                    breaks = dir.breaks,
+                    ordered_result = TRUE)
+  levels(dir.binned) <- dir.labels
+  data$dir.binned <- dir.binned
+
+  # Run debug if required ----
+  if (debug>0){    
+    cat(dir.breaks,"\n")
+    cat(dir.labels,"\n")
+    cat(levels(dir.binned),"\n")       
+  }  
+
+  # deal with change in ordering introduced somewhere around version 2.2
+  if(packageVersion("ggplot2") > "2.2"){    
+    cat("Hadley broke my code\n")
+    data$spd.binned = with(data, factor(spd.binned, levels = rev(levels(spd.binned))))
+    spd.colors = rev(spd.colors)
+  }
+
+  # create the plot ----
+  p.windrose <- ggplot(data = data,
+                       aes(x = dir.binned,
+                           fill = spd.binned)) +
+    geom_bar() + 
+    scale_x_discrete(drop = FALSE,
+                     labels = waiver()) +
+    coord_polar(start = -((dirres/2)/360) * 2*pi) +
+    scale_fill_manual(name = "Windgeschwindigkeit (m/s)", 
+                      values = spd.colors,
+                      drop = FALSE) +
+    theme(axis.title.x = element_blank())
+
+  # adjust axes if required
+  if (!is.na(countmax)){
+    p.windrose <- p.windrose +
+      ylim(c(0,countmax))
+  }
+
+  # print the plot
+  print(p.windrose)  
+
+  # return the handle to the wind rose
+  return(p.windrose)
+}
+```
+
+
+```{r}
+mythenquai_2007_2021_no_wind_na <- mythenquai_2007_2021 %>% filter( wind_speed_avg_10min > 2)
+plot.windrose(spd = mythenquai_2007_2021_no_wind_na$wind_speed_avg_10min,
+                   dir = mythenquai_2007_2021_no_wind_na$wind_direction) + labs(y="Anzahl Messungen", title="Windrichtung und Geschwindigkeit")
+
+```
+
+ - Wie verändert sich der Wasserstand im Verlaufe eines Jahres? (Heatmap, 12 months, year)
+
+## Grundsätzliches
+Pie und Donut sind scheisse, weil Winkel nicht gut.
+Nicht zu viele Variablen, bei z.B. stacked bar charts.
+
