@@ -329,6 +329,19 @@ Nicht zu viele Variablen, bei z.B. stacked bar charts.
 
 
 ```{r}
+jan_2018 <- as.POSIXct("2018-01-01 00:00:00", tz="UTC")
+jan_2019 <- as.POSIXct("2019-01-01 00:00:00", tz="UTC")
+
+mythenquai_2007_2021 %>% 
+  select(timestamp_utc, water_temperature) %>% 
+  mutate(month = lubridate::floor_date(timestamp_utc, "m"), year = lubridate::floor_date(timestamp_utc, "year")) %>%
+  group_by(year, month) %>%
+  summarise(mean_water_temperature = mean(water_temperature)) %>% 
+  #filter(timestamp_utc >= jan_2007 & timestamp_utc < jan_2019) %>% 
+  ggplot(aes(fill=month, y=mean_water_temperature, x=year)) +
+    geom_bar(position="dodge", stat="identity")
+  
+  
 
 mythenquai_2007_2021 %>% 
   ggplot(aes(x=water_temperature)) +
@@ -368,5 +381,19 @@ mythenquai_2007_2021 %>%
   filter(!is.na(water_temperature) | !is.na(water_level) | !is.na(global_radiation) | !is.na(precipitation)) %>% 
   summarise(max(timestamp_utc))
 
+```
+
+```{r}
+jan_2018 <- as.POSIXct("2007-01-01 00:00:00", tz="UTC")
+jan_2019 <- as.POSIXct("2019-01-01 00:00:00", tz="UTC")
+mythenquai_2007_2021 %>% 
+  select(timestamp_utc, precipitation) %>% 
+  filter(timestamp_utc >= jan_2018 & timestamp_utc < jan_2019) %>% 
+  group_by(day = lubridate::floor_date(timestamp_utc, "day")) %>%
+  summarise(total_precipitation = sum(precipitation)) %>% 
+  filter(total_precipitation > 0) %>% 
+  ggplot(aes(x=total_precipitation)) +
+    geom_density() +
+    labs(x="Niederschlag an einem Tag", y="Dichte", title="Verteilung des totalen Niederschlags pro Tag in Mythenquai")
 ```
 
