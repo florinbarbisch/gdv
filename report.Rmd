@@ -186,7 +186,9 @@ plot.windrose <- function(data,
                       spdseq = NULL,
                       palette = "YlGnBu",
                       countmax = NA,
-                      debug = 0){
+                      debug = 0,
+                      polar = TRUE,
+                      bin_as_faccets = FALSE){
 
 
 # Look to see what data was passed in to the function
@@ -282,16 +284,32 @@ plot.windrose <- function(data,
   }
 
   # create the plot ----
-  p.windrose <- ggplot(data = data,
+  if (bin_as_faccets) {
+    p.windrose <- ggplot(data = data,
+                       aes(x = dir.binned))
+  } else {
+    p.windrose <- ggplot(data = data,
                        aes(x = dir.binned,
-                           fill = spd.binned)) +
+                           fill = spd.binned))
+  }
+  p.windrose <- p.windrose +
     geom_bar() + 
     scale_x_discrete(drop = FALSE,
-                     labels = waiver()) +
-    coord_polar(start = -((dirres/2)/360) * 2*pi) +
+                     labels = waiver())
+  if (polar) {
+    p.windrose <- p.windrose +
+      coord_polar(start = -((dirres/2)/360) * 2*pi)
+      
+  }
+  p.windrose <- p.windrose +
     scale_fill_manual(name = "Windgeschwindigkeit (m/s)", 
                       values = spd.colors,
-                      drop = FALSE) +
+                      drop = FALSE)
+  if (bin_as_faccets) {
+    p.windrose <- p.windrose +
+      facet_wrap(~spd.binned)
+  }
+  p.windrose <- p.windrose +
     theme(axis.title.x = element_blank())
 
   # adjust axes if required
@@ -314,8 +332,16 @@ plot.windrose <- function(data,
 jan_2018 <- as.POSIXct("2018-01-01 00:00:00", tz="UTC")
 jan_2019 <- as.POSIXct("2019-01-01 00:00:00", tz="UTC")
 mythenquai_2007_2021_no_wind_na <- mythenquai_2007_2021 %>% filter( wind_speed_avg_10min > 2 & timestamp_utc >= jan_2018 & timestamp_utc < jan_2019 )
+
+
 plot.windrose(spd = mythenquai_2007_2021_no_wind_na$wind_speed_avg_10min,
                    dir = mythenquai_2007_2021_no_wind_na$wind_direction) + labs(y="Anzahl Messungen", title="Windrichtung und Geschwindigkeit")
+
+plot.windrose(spd = mythenquai_2007_2021_no_wind_na$wind_speed_avg_10min,
+                   dir = mythenquai_2007_2021_no_wind_na$wind_direction, polar = FALSE) + labs(y="Anzahl Messungen", title="Windrichtung und Geschwindigkeit")
+
+plot.windrose(spd = mythenquai_2007_2021_no_wind_na$wind_speed_avg_10min,
+                   dir = mythenquai_2007_2021_no_wind_na$wind_direction, polar = FALSE, bin_as_faccets = TRUE) + labs(y="Anzahl Messungen", title="Windrichtung und Geschwindigkeit")
 
 ```
 
@@ -395,5 +421,9 @@ mythenquai_2007_2021 %>%
   ggplot(aes(x=total_precipitation)) +
     geom_density() +
     labs(x="Niederschlag an einem Tag", y="Dichte", title="Verteilung des totalen Niederschlags pro Tag in Mythenquai")
+```
+
+```{r}
+ggplot(data = mythenquai_2007_2021_no_wind_na, aes(x=))
 ```
 
