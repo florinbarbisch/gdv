@@ -388,7 +388,7 @@ RegularTimeSeries <- seq(jan_2018, jan_2019, by = "10 min")
 
 
 mythenquai_2019 <- mythenquai_2007_2021 %>% filter(timestamp_utc >= jan_2018 & timestamp_utc < jan_2019)
-print(timestamps)
+
 
 
 missing_timestamps <- RegularTimeSeries[which(!(RegularTimeSeries %in% mythenquai_2019$timestamp_utc))]
@@ -424,6 +424,15 @@ mythenquai_2007_2021 %>%
 ```
 
 ```{r}
-ggplot(data = mythenquai_2007_2021_no_wind_na, aes(x=))
+mythenquai_2007_2021_no_wind_na %>% 
+  mutate(wind_direction = wind_direction / 8)
+ggplot(mythenquai_2007_2021_no_wind_na, aes(x=wind_direction)) +
+  geom_bar() +
+  coord_fixed()
+```
+
+
+```{r}
+
 ```
 
