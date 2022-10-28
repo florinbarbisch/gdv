@@ -15,7 +15,8 @@ Der Auftraggebber dieser Challenge war der Segelclub Zürich. Die Fragen sollten
 ```{r}
 library(tidyverse)
 library(lubridate)
-```
+library(patchwork)
+  ```
 
 
 ```{r}
@@ -436,7 +437,45 @@ ggplot(mythenquai_2007_2021_no_wind_na, aes(x=wind_direction)) +
 ```
 
 
+
+# Usabilitytest auswertung
+```{r}
+usability <- read.csv("Auswertung_Usability_test.csv", encoding = "UTF-8")
+
+usability <- usability %>% 
+  mutate(Grafik = factor(Grafik, levels = c("Abbildung 1: Balkendiagramm über den Niederschlag in Mythenquai pro Monat im Jahr 2018", "Abbildung 9: Windrichtung und Geschwindigkeit in Mythenquai im 2018")),
+         Frage = factor(Frage, levels = c("3. Welche Windgeschwindigkeit wurde in Richtung Norden am zweitmeisten gemessen?", "2 Wievielmal wurde Wind aus der Richtung Nordwesten gemessen?", "1. Aus welcher Richtung kommt der Wind am meisten?", "3. Wieviel hat es im Mai 2018 geregnet?", "2. Wann war es am trockensten?", "1. Wann hat es am meisten geregnet?")),
+         Number = seq(n()))
+
+usability <- usability %>% 
+  pivot_longer(cols = c(Richtig, Falsch), names_to="Antwort", values_to="Anzahl_Antworten")
+summary(usability)
+usability %>% sample_n(5)
+```
+
 ```{r}
 
+png(filename="Auswertung Usability Tests.png", width=800, height=600)
+
+p1 <- usability %>% 
+  filter(str_detect(Grafik, "^Abbildung 1")) %>% 
+  ggplot(aes(y=Frage, x=Anzahl_Antworten, fill=Antwort)) + 
+  geom_bar(stat="identity") +
+  theme(axis.text.y = element_text(angle = 0, vjust = 0.5, hjust=0)) + 
+  scale_y_discrete(labels = function(x) str_wrap(x, width = 40)) +
+  ggtitle("Abbildung 1: Balkendiagramm über den Niederschlag in Mythenquai pro Monat im Jahr 2018") +
+  xlab("Anzahl Antworten")
+
+p2 <- usability %>% 
+  filter(str_detect(Grafik, "^Abbildung 9")) %>% 
+  ggplot(aes(y=Frage, x=Anzahl_Antworten, fill=Antwort)) + 
+  geom_bar(stat="identity") +
+  theme(axis.text.y = element_text(angle = 0, vjust = 0.5, hjust=0)) + 
+  scale_y_discrete(labels = function(x) str_wrap(x, width = 40)) +
+  ggtitle("Abbildung 9: Windrichtung und Geschwindigkeit in Mythenquai im 2018") +
+  xlab("Anzahl Antworten")
+p1 + p2 + plot_layout(nrow = 2)
+
+dev.off()
 ```
 
